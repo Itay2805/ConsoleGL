@@ -38,11 +38,9 @@
 
 #pragma region OLC extensions
 // pixel format
-#define EXT_OLC_PIXEL_FORMAT	(0x2000)
+#define EXT_OLC_PIXEL_FORMAT			(0x2000)
 // type
-#define EXT_OLC_PIXEL			(0x1500)
-// features
-#define EXT_OLC_SLOW_COLOR		(0x0C00)
+#define EXT_OLC_PIXEL					(0x1500)
 #pragma endregion
 
 

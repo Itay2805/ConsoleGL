@@ -13,43 +13,43 @@
 struct Pixel {
 	union {
 		struct {
-			unsigned char a;
-			unsigned char b;
-			unsigned char g;
-			unsigned char r;
+			float a;
+			float b;
+			float g;
+			float r;
 		};
-		unsigned int rgba;
 	};
 
 	Pixel(unsigned char r, unsigned char g, unsigned char b, unsigned char a)
-		:	r(r),
-			g(g),
-			b(b),
-			a(a)
+		:	r(r / 255.0f),
+			g(g / 255.0f),
+			b(b / 255.0f),
+			a(a / 255.0f)
 	{
 
 	}
 
-	Pixel(int pixel)
-		: rgba(pixel)
-	{
-
+	Pixel(int rgba) {
+		r = rgba >> 24 & 0xFF;
+		g = rgba >> 16 & 0xFF;
+		b = rgba >> 8 & 0xFF;
+		a = rgba & 0xFF;
 	}
 
 	Pixel(float r, float g, float b, float a)
-		:	r((unsigned char)(GL_CLAMP(r) * 255)),
-			g((unsigned char)(GL_CLAMP(g) * 255)),
-			b((unsigned char)(GL_CLAMP(b) * 255)),
-			a((unsigned char)(GL_CLAMP(a) * 255))
+		:	r(GL_CLAMP(r)),
+			g(GL_CLAMP(g)),
+			b(GL_CLAMP(b)),
+			a(GL_CLAMP(a))
 	{
 
 	}
 
 	Pixel()
-		:	r(0),
-			g(0),
-			b(0),
-			a((char)255)
+		:	r(0.0f),
+			g(0.0f),
+			b(0.0f),
+			a(1.0f)
 	{
 
 	}
@@ -136,7 +136,9 @@ struct GLContext {
 			textureEnabled(false),
 			extOlcSlowColor(false)
 	{
-		std::memset(bufColor, bufColorClear.rgba, w * h);
+		for (int i = 0; i < w * h; i++) {
+			bufColor[i] = bufColorClear;
+		}
 	}
 
 	~GLContext() {
@@ -172,7 +174,6 @@ void glEnable(int capability) {
 	case GL_DEPTH_TEST: context->depthEnabled = true; break;
 	case GL_CULL_FACE: context->cullingEnabled = true; break;
 	case GL_TEXTURE_2D: context->textureEnabled = true; break;
-	case EXT_OLC_SLOW_COLOR: context->extOlcSlowColor = true; break;
 	default:
 		context->err = GL_INVALID_ENUM;
 	}
@@ -185,7 +186,6 @@ void glDisable(int capability) {
 	case GL_DEPTH_TEST: context->depthEnabled = false; break;
 	case GL_CULL_FACE: context->cullingEnabled = false; break;
 	case GL_TEXTURE_2D: context->textureEnabled = false; break;
-	case EXT_OLC_SLOW_COLOR: context->extOlcSlowColor = false; break;
 	default:
 		context->err = GL_INVALID_ENUM;
 	}
@@ -218,7 +218,7 @@ void glClear(int mask) {
 
 	if ((mask & GL_COLOR_BUFFER_BIT) != 0) {
 		for (int i = 0; i < size; i++) {
-			context->bufColor[i] = context->bufColorClear.rgba;
+			context->bufColor[i] = context->bufColorClear;
 		}
 	}
 
@@ -561,12 +561,14 @@ void glReadPixels(int x, int y, int w, int h, int format, int type, void* data) 
 		return;
 	}
 
-	if ((type != GL_BYTE && type != GL_FLOAT && type != EXT_OLC_PIXEL)) {
+	bool isExtOlcType = type == EXT_OLC_PIXEL;
+
+	if ((type != GL_BYTE && type != GL_FLOAT && !isExtOlcType)) {
 		context->err = GL_INVALID_ENUM;
 		return;
 	}
 
-	if ((type == EXT_OLC_PIXEL && format != EXT_OLC_PIXEL_FORMAT) || (type != EXT_OLC_PIXEL && format == EXT_OLC_PIXEL_FORMAT)) {
+	if ((isExtOlcType && format != EXT_OLC_PIXEL_FORMAT) || (!isExtOlcType && format == EXT_OLC_PIXEL_FORMAT)) {
 		context->err = GL_INVALID_OPERATION;
 		return;
 	}
@@ -580,16 +582,16 @@ void glReadPixels(int x, int y, int w, int h, int format, int type, void* data) 
 		int size = context->w * context->h;
 		for (int i = 0; i < size; i++) {
 			if (type == GL_BYTE) {
-				((unsigned char*)data)[i * 4 + 0] = context->bufColor->r;
-				((unsigned char*)data)[i * 4 + 1] = context->bufColor->g;
-				((unsigned char*)data)[i * 4 + 2] = context->bufColor->b;
-				((unsigned char*)data)[i * 4 + 3] = context->bufColor->a;
+				((unsigned char*)data)[i * 4 + 0] = context->bufColor->r * 255.0f;
+				((unsigned char*)data)[i * 4 + 1] = context->bufColor->g * 255.0f;
+				((unsigned char*)data)[i * 4 + 2] = context->bufColor->b * 255.0f;
+				((unsigned char*)data)[i * 4 + 3] = context->bufColor->a * 255.0f;
 			}
 			else if (type == GL_FLOAT) {
-				((float*)data)[i * 4 + 0] = context->bufColor->r / 255.0f;
-				((float*)data)[i * 4 + 1] = context->bufColor->g / 255.0f;
-				((float*)data)[i * 4 + 2] = context->bufColor->b / 255.0f;
-				((float*)data)[i * 4 + 3] = context->bufColor->a / 255.0f;
+				((float*)data)[i * 4 + 0] = context->bufColor->r;
+				((float*)data)[i * 4 + 1] = context->bufColor->g;
+				((float*)data)[i * 4 + 2] = context->bufColor->b;
+				((float*)data)[i * 4 + 3] = context->bufColor->a;
 			}
 		}
 	}
@@ -597,14 +599,14 @@ void glReadPixels(int x, int y, int w, int h, int format, int type, void* data) 
 		int size = context->w * context->h;
 		for (int i = 0; i < size; i++) {
 			if (type == GL_BYTE) {
-				((unsigned char*)data)[i * 3 + 0] = context->bufColor->r;
-				((unsigned char*)data)[i * 3 + 1] = context->bufColor->g;
-				((unsigned char*)data)[i * 3 + 2] = context->bufColor->b;
+				((unsigned char*)data)[i * 3 + 0] = context->bufColor->r * 255.0f;
+				((unsigned char*)data)[i * 3 + 1] = context->bufColor->g * 255.0f;
+				((unsigned char*)data)[i * 3 + 2] = context->bufColor->b * 255.0f;
 			}
 			else if (type == GL_FLOAT) {
-				((float*)data)[i * 3 + 0] = context->bufColor->r / 255.0f;
-				((float*)data)[i * 3 + 1] = context->bufColor->g / 255.0f;
-				((float*)data)[i * 3 + 2] = context->bufColor->b / 255.0f;
+				((float*)data)[i * 3 + 0] = context->bufColor->r;
+				((float*)data)[i * 3 + 1] = context->bufColor->g;
+				((float*)data)[i * 3 + 2] = context->bufColor->b;
 			}
 		}
 	}
@@ -627,43 +629,22 @@ void glReadPixels(int x, int y, int w, int h, int format, int type, void* data) 
 			static short FG[] = { 0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007, 0x0008, 0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x000E, 0x000F };
 			static short BG[] = { 0x0000, 0x0010, 0x0020, 0x0030, 0x0040, 0x0050, 0x0060, 0x0070, 0x0080, 0x0090, 0x00A0, 0x00B0, 0x00C0, 0x00D0, 0x00E0, 0x00F0 };
 			static const char* CHARS = "0123456789abcdef";
-			if (context->extOlcSlowColor) {
-				// transform the pixels to the currect format - too slow, will have to try something else
-				static Pixel cTable[] = { Pixel(0x000000FF), Pixel(0x000080FF), Pixel(0x008000FF), Pixel(0x008080FF), Pixel(0x800000FF), Pixel(0x800080FF), Pixel(0x808000FF), Pixel(0xC0C0C0FF), Pixel(0x808080FF), Pixel(0x0000FFFF), Pixel(0x00FF00FF), Pixel(0x00FFFFFF), Pixel(0xFF0000FF), Pixel(0xFF00FFFF), Pixel(0xFFFF00FF), Pixel(0xFFFFFFFF) };
-				static wchar_t rList[] = { (wchar_t)0x2591, (wchar_t)0x2592, (wchar_t)0x2593, (wchar_t)0x2588 };
-				int bestHit[] = { 0, 0, 4, INT32_MAX };
-				for (int rChar = sizeof(rList); rChar > 0; rChar--) {
-					for (int cFore = 0; cFore < sizeof(cTable); cFore++) {
-						for (int cBack = 0; cBack < sizeof(cTable); cBack++) {
-							int R = (cTable[cFore].r * rChar + cTable[cBack].r * (sizeof(rList) - rChar)) / sizeof(rList);
-							int G = (cTable[cFore].g * rChar + cTable[cBack].g * (sizeof(rList) - rChar)) / sizeof(rList);
-							int B = (cTable[cFore].b * rChar + cTable[cBack].b * (sizeof(rList) - rChar)) / sizeof(rList);
-							int iScore = (cValue.r - R) * (cValue.r - R) + (cValue.g - G) * (cValue.g - G) + (cValue.b - B) * (cValue.b - B);
-							if (!(rChar > 1 && rChar < 4 && iScore > 5000)) {
-								if (iScore < bestHit[3]) {
-									bestHit[3] = iScore;
-									bestHit[0] = cFore;
-									bestHit[1] = cBack;
-									bestHit[2] = rChar;
-								}
-							}
-						}
-					}
-				}
-				pixels[i].c = rList[bestHit[2]];
-				pixels[i].col = FG[bestHit[0]] | BG[bestHit[1]];
-			}
-			else {
+			unsigned char r = (unsigned char)(cValue.r * 255.0f);
+			unsigned char g = (unsigned char)(cValue.g * 255.0f);
+			unsigned char b = (unsigned char)(cValue.b * 255.0f);
+
+			static Pixel cTable[] = { Pixel(0x000000FF), Pixel(0x000080FF), Pixel(0x008000FF), Pixel(0x008080FF), Pixel(0x800000FF), Pixel(0x800080FF), Pixel(0x808000FF), Pixel(0xC0C0C0FF), Pixel(0x808080FF), Pixel(0x0000FFFF), Pixel(0x00FF00FF), Pixel(0x00FFFFFF), Pixel(0xFF0000FF), Pixel(0xFF00FFFF), Pixel(0xFFFF00FF), Pixel(0xFFFFFFFF) };
+
+			if (type == EXT_OLC_PIXEL) {
 				// fast way to turn color to console color, but it is not that good...
-				int index = (cValue.r > 128 || cValue.g > 128 || cValue.b > 128) ? 8 : 0;
-				index |= (cValue.r > 64) ? 4 : 0;
-				index |= (cValue.g > 64) ? 2 : 0;
-				index |= (cValue.b > 64) ? 1 : 0;
+				int index = (r > 128 || g > 128 || b > 128) ? 8 : 0;
+				index |= (r > 64) ? 4 : 0;
+				index |= (g > 64) ? 2 : 0;
+				index |= (b > 64) ? 1 : 0;
 				//pixels[i].c = CHARS[index];
 				pixels[i].c = ' ';
 				pixels[i].col = BG[index];
-
-			}			
+			}
 		}
 	}
 }

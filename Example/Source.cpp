@@ -64,7 +64,7 @@ class MyEngineClass : public olcConsoleGameEngine {
 			glVertex3f(0, 0, 1);
 
 			// Bottom
-			glColor3f(1, 1, 0);
+			//glColor3f(1, 1, 0);
 			
 			glTexCoord2f(0.66f, 1.0f);
 			glVertex3f(0, 1, 0);
@@ -76,7 +76,7 @@ class MyEngineClass : public olcConsoleGameEngine {
 			glVertex3f(0, 0, 0);
 
 			// Front
-			glColor3f(1, 0, 1);
+			//glColor3f(1, 0, 1);
 			
 			glTexCoord2f(0.34f, 0.0f);
 			glVertex3f(0, 0, 1);
@@ -88,7 +88,7 @@ class MyEngineClass : public olcConsoleGameEngine {
 			glVertex3f(0, 0, 0);
 
 			// Back
-			glColor3f(0, 0, 1);
+			//glColor3f(0, 0, 1);
 			
 			glTexCoord2f(0.34f, 0.0f);
 			glVertex3f(0, 1, 1);
@@ -100,7 +100,7 @@ class MyEngineClass : public olcConsoleGameEngine {
 			glVertex3f(0, 1, 0);
 
 			// Left side
-			glColor3f(0, 1, 0);
+			//glColor3f(0, 1, 0);
 			
 			glTexCoord2f(0.34f, 0.0f);
 			glVertex3f(0, 0, 1);
@@ -112,7 +112,7 @@ class MyEngineClass : public olcConsoleGameEngine {
 			glVertex3f(0, 0, 0);
 
 			// Right side
-			glColor3f(1, 0, 0);
+			//glColor3f(1, 0, 0);
 			
 			glTexCoord2f(0.34f, 0.0f);
 			glVertex3f(1, 0, 1);
