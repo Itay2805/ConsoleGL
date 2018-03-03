@@ -553,6 +553,189 @@ void glTexImage2D(int target, int width, int height, int type, void* data) {
 	}
 }
 
+#pragma region OLC
+// this was taken from the webcam to console:
+// https://github.com/OneLoneCoder/videos/blob/master/OneLoneCoder_Webcam.cpp
+
+enum COLOUR
+{
+	FG_BLACK = 0x0000,
+	FG_DARK_BLUE = 0x0001,
+	FG_DARK_GREEN = 0x0002,
+	FG_DARK_CYAN = 0x0003,
+	FG_DARK_RED = 0x0004,
+	FG_DARK_MAGENTA = 0x0005,
+	FG_DARK_YELLOW = 0x0006,
+	FG_GREY = 0x0007, // Thanks MS :-/
+	FG_DARK_GREY = 0x0008,
+	FG_BLUE = 0x0009,
+	FG_GREEN = 0x000A,
+	FG_CYAN = 0x000B,
+	FG_RED = 0x000C,
+	FG_MAGENTA = 0x000D,
+	FG_YELLOW = 0x000E,
+	FG_WHITE = 0x000F,
+	BG_BLACK = 0x0000,
+	BG_DARK_BLUE = 0x0010,
+	BG_DARK_GREEN = 0x0020,
+	BG_DARK_CYAN = 0x0030,
+	BG_DARK_RED = 0x0040,
+	BG_DARK_MAGENTA = 0x0050,
+	BG_DARK_YELLOW = 0x0060,
+	BG_GREY = 0x0070,
+	BG_DARK_GREY = 0x0080,
+	BG_BLUE = 0x0090,
+	BG_GREEN = 0x00A0,
+	BG_CYAN = 0x00B0,
+	BG_RED = 0x00C0,
+	BG_MAGENTA = 0x00D0,
+	BG_YELLOW = 0x00E0,
+	BG_WHITE = 0x00F0,
+};
+
+enum PIXEL_TYPE
+{
+	PIXEL_SOLID = 0x2588,
+	PIXEL_THREEQUARTERS = 0x2593,
+	PIXEL_HALF = 0x2592,
+	PIXEL_QUARTER = 0x2591,
+};
+
+typedef struct
+{
+	float r;       // a fraction between 0 and 1
+	float g;       // a fraction between 0 and 1
+	float b;       // a fraction between 0 and 1
+} rgb;
+
+typedef struct
+{
+	float h;       // angle in degrees
+	float s;       // a fraction between 0 and 1
+	float v;       // a fraction between 0 and 1
+} hsv;
+
+hsv rgb2hsv(rgb in)
+{
+	hsv         out;
+	float      min, max, delta;
+
+	min = in.r < in.g ? in.r : in.g;
+	min = min  < in.b ? min : in.b;
+
+	max = in.r > in.g ? in.r : in.g;
+	max = max  > in.b ? max : in.b;
+
+	out.v = max;                                // v
+	delta = max - min;
+	if (delta < 0.00001f)
+	{
+		out.s = 0;
+		out.h = 0; // undefined, maybe nan?
+		return out;
+	}
+	if (max > 0.0) { // NOTE: if Max is == 0, this divide would cause a crash
+		out.s = (delta / max);                  // s
+	}
+	else {
+		// if max is 0, then r = g = b = 0              
+		// s = 0, h is undefined
+		out.s = 0.0;
+		out.h = NAN;                            // its now undefined
+		return out;
+	}
+	if (in.r >= max)                           // > is bogus, just keeps compilor happy
+		out.h = (in.g - in.b) / delta;        // between yellow & magenta
+	else
+		if (in.g >= max)
+			out.h = 2.0 + (in.b - in.r) / delta;  // between cyan & yellow
+		else
+			out.h = 4.0 + (in.r - in.g) / delta;  // between magenta & cyan
+
+	out.h *= 60.0;                              // degrees
+
+	if (out.h < 0.0)
+		out.h += 360.0;
+
+	return out;
+}
+
+void ClassifyPixel_Grey(float r, float g, float b, wchar_t &sym, short &fg_col, short &bg_col)
+{
+	float luminance = 0.2987f * r + 0.5870f * g + 0.1140f * b;
+	int pixel_bw = (int)(luminance * 13.0f);
+	switch (pixel_bw)
+	{
+	case 0: bg_col = BG_BLACK; fg_col = FG_BLACK; sym = PIXEL_SOLID; break;
+
+	case 1: bg_col = BG_BLACK; fg_col = FG_DARK_GREY; sym = PIXEL_QUARTER; break;
+	case 2: bg_col = BG_BLACK; fg_col = FG_DARK_GREY; sym = PIXEL_HALF; break;
+	case 3: bg_col = BG_BLACK; fg_col = FG_DARK_GREY; sym = PIXEL_THREEQUARTERS; break;
+	case 4: bg_col = BG_BLACK; fg_col = FG_DARK_GREY; sym = PIXEL_SOLID; break;
+
+	case 5: bg_col = BG_DARK_GREY; fg_col = FG_GREY; sym = PIXEL_QUARTER; break;
+	case 6: bg_col = BG_DARK_GREY; fg_col = FG_GREY; sym = PIXEL_HALF; break;
+	case 7: bg_col = BG_DARK_GREY; fg_col = FG_GREY; sym = PIXEL_THREEQUARTERS; break;
+	case 8: bg_col = BG_DARK_GREY; fg_col = FG_GREY; sym = PIXEL_SOLID; break;
+
+	case 9:  bg_col = BG_GREY; fg_col = FG_WHITE; sym = PIXEL_QUARTER; break;
+	case 10: bg_col = BG_GREY; fg_col = FG_WHITE; sym = PIXEL_HALF; break;
+	case 11: bg_col = BG_GREY; fg_col = FG_WHITE; sym = PIXEL_THREEQUARTERS; break;
+	case 12: bg_col = BG_GREY; fg_col = FG_WHITE; sym = PIXEL_SOLID; break;
+	}
+}
+
+void ClassifyPixel_HSL(float r, float g, float b, wchar_t &sym, short &fg_col, short &bg_col)
+{
+	hsv col = rgb2hsv({ r, g, b });
+
+	const struct { wchar_t c; short fg; short bg; } hues[] =
+	{
+		{ PIXEL_SOLID,				FG_RED | BG_RED },
+	{ PIXEL_QUARTER,			FG_YELLOW | BG_RED },
+	{ PIXEL_HALF,				FG_YELLOW | BG_RED },
+	{ PIXEL_THREEQUARTERS,		FG_YELLOW | BG_RED },
+
+	{ PIXEL_SOLID,				FG_GREEN | BG_YELLOW },
+	{ PIXEL_QUARTER,			FG_GREEN | BG_YELLOW },
+	{ PIXEL_HALF,				FG_GREEN | BG_YELLOW },
+	{ PIXEL_THREEQUARTERS,		FG_GREEN | BG_YELLOW },
+
+	{ PIXEL_SOLID,				FG_CYAN | BG_GREEN },
+	{ PIXEL_QUARTER,			FG_CYAN | BG_GREEN },
+	{ PIXEL_HALF,				FG_CYAN | BG_GREEN },
+	{ PIXEL_THREEQUARTERS,		FG_CYAN | BG_GREEN },
+
+	{ PIXEL_SOLID,				FG_BLUE | BG_CYAN },
+	{ PIXEL_QUARTER,			FG_BLUE | BG_CYAN },
+	{ PIXEL_HALF,				FG_BLUE | BG_CYAN },
+	{ PIXEL_THREEQUARTERS,		FG_BLUE | BG_CYAN },
+
+	{ PIXEL_SOLID,				FG_MAGENTA | BG_BLUE },
+	{ PIXEL_QUARTER,			FG_MAGENTA | BG_BLUE },
+	{ PIXEL_HALF,				FG_MAGENTA | BG_BLUE },
+	{ PIXEL_THREEQUARTERS,		FG_MAGENTA | BG_BLUE },
+
+	{ PIXEL_SOLID,				FG_RED | BG_MAGENTA },
+	{ PIXEL_QUARTER,			FG_RED | BG_MAGENTA },
+	{ PIXEL_HALF,				FG_RED | BG_MAGENTA },
+	{ PIXEL_THREEQUARTERS,		FG_RED | BG_MAGENTA },
+
+	};
+
+	int index = (int)((col.h / 360.0f) * 24.0f);
+
+	if (col.s > 0.2f)
+	{
+		sym = hues[index].c;
+		fg_col = hues[index].fg;
+		bg_col = hues[index].bg;
+	}
+	else
+		ClassifyPixel_Grey(r, g, b, sym, fg_col, bg_col);
+}
+#pragma endregion
+
 void glReadPixels(int x, int y, int w, int h, int format, int type, void* data) {
 	GL_BEGIN_CHECK;
 
@@ -635,16 +818,22 @@ void glReadPixels(int x, int y, int w, int h, int format, int type, void* data) 
 
 			static Pixel cTable[] = { Pixel(0x000000FF), Pixel(0x000080FF), Pixel(0x008000FF), Pixel(0x008080FF), Pixel(0x800000FF), Pixel(0x800080FF), Pixel(0x808000FF), Pixel(0xC0C0C0FF), Pixel(0x808080FF), Pixel(0x0000FFFF), Pixel(0x00FF00FF), Pixel(0x00FFFFFF), Pixel(0xFF0000FF), Pixel(0xFF00FFFF), Pixel(0xFFFF00FF), Pixel(0xFFFFFFFF) };
 
-			if (type == EXT_OLC_PIXEL) {
-				// fast way to turn color to console color, but it is not that good...
-				int index = (r > 128 || g > 128 || b > 128) ? 8 : 0;
-				index |= (r > 64) ? 4 : 0;
-				index |= (g > 64) ? 2 : 0;
-				index |= (b > 64) ? 1 : 0;
-				//pixels[i].c = CHARS[index];
-				pixels[i].c = ' ';
-				pixels[i].col = BG[index];
-			}
+			//if (type == EXT_OLC_PIXEL) {
+			//	// fast way to turn color to console color, but it is not that good...
+			//	int index = (r > 128 || g > 128 || b > 128) ? 8 : 0;
+			//	index |= (r > 64) ? 4 : 0;
+			//	index |= (g > 64) ? 2 : 0;
+			//	index |= (b > 64) ? 1 : 0;
+			//	//pixels[i].c = CHARS[index];
+			//	pixels[i].c = ' ';
+			//	pixels[i].col = BG[index];
+			//}
+			wchar_t c;
+			short bg;
+			short fg;
+			ClassifyPixel_HSL(cValue.r, cValue.g, cValue.b, c, fg, bg);
+			pixels[i].c = c;
+			pixels[i].col = fg | bg;
 		}
 	}
 }
