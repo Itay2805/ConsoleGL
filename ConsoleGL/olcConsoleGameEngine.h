@@ -167,10 +167,10 @@ public:
 		if (bufferPixels != nullptr) {
 			delete[] bufferPixels;
 		}
-		bufferPixels = new OlcPixel[m_nScreenWidth * m_nScreenHeight];
-
 		m_nScreenWidth = width;
 		m_nScreenHeight = height;
+
+		bufferPixels = new OlcPixel[m_nScreenWidth * m_nScreenHeight];
 
 		// Update 13/09/2017 - It seems that the console behaves differently on some systems
 		// and I'm unsure why this is. It could be to do with windows default settings, or

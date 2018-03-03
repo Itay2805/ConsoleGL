@@ -261,8 +261,8 @@ void drawPoint(Vertex p) {
 	Pixel fragColor = p.color;
 
 	// Texture samples
-	if (context->textureEnabled && context->curTexture != 0) {
-		const Texture& tex = context->textures[context->curTexture - 1];
+	if (context->textureEnabled && context->curTexture != -1) {
+		const Texture& tex = context->textures[context->curTexture];
 		float u = p.texCoord.x;
 		float v = p.texCoord.y;
 		u = (float)(((int)glm::floor(u * tex.w)) % tex.w);
@@ -324,8 +324,8 @@ void drawTriangle(Vertex p1, Vertex p2, Vertex p3) {
 			fragColor.a = (ic0*p1.color.a / p1.coord.z + ic1 * p2.color.a / p2.coord.z + ic2 * p3.color.a / p3.coord.z) * z;
 
 			// Texture sample
-			if (context->textureEnabled && context->curTexture != 0) {
-				const Texture& tex = context->textures[context->curTexture + 1];
+			if (context->textureEnabled && context->curTexture != -1) {
+				const Texture& tex = context->textures[context->curTexture];
 				float u = (ic0*p1.texCoord.x / p1.coord.z + ic1 * p2.texCoord.x / p2.coord.z + ic2 * p3.texCoord.x / p3.coord.z) * z;
 				float v = (ic0*p1.texCoord.y / p1.coord.z + ic1 * p2.texCoord.y / p2.coord.z + ic2 * p3.texCoord.y / p3.coord.z) * z;
 				u = (float)((int)glm::floor(u * tex.w) % tex.w); // This behaviour should later depend on GL_TEXTURE_WRAP_S
