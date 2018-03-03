@@ -246,8 +246,6 @@ void glBegin(int mode) {
 	}
 }
 
-
-
 void drawPoint(Vertex p) {
 	int o = (int)(glm::floor(p.coord.x) + glm::floor(p.coord.y) * context->w);
 
@@ -276,6 +274,67 @@ void drawPoint(Vertex p) {
 	}
 
 	context->bufColor[o] = fragColor;
+}
+
+void drawLine(Vertex p1, Vertex p2) {
+	int x0 = (int)glm::floor(p1.coord.x);
+	int y0 = (int)glm::floor(p1.coord.y);
+	int x1 = (int)glm::ceil(p2.coord.x);
+	int y1 = (int)glm::ceil(p2.coord.y);
+	int dx = glm::abs(x1 - x0);
+	int dy = glm::abs(y1 - y0);
+	int sx = x0 < x1 ? 1 : -1;
+	int sy = y0 < y1 ? 1 : -1;
+	int err = dx - dy;
+
+	int totDist = dx > dy ? dx : dy;
+	while (true) {
+		float ic0 = glm::abs(dx > dy ? (x1 - x0) : (y1 - y0)) / totDist;
+		float ic1 = 1.0 - ic0;
+
+		int o = (x0 + y0 * context->w);
+		float z = 1 / (ic0 * 1 / p1.coord.z + ic1 * 1 / p2.coord.z);
+		if (context->depthEnabled) {
+			if (z > context->bufDepth[o]) continue;
+			else context->bufDepth[o] = z;
+		}
+
+		// Vertex Color
+		Pixel fragColor;
+		fragColor.r = (ic0*p1.color.r / p1.coord.z + ic1 * p2.color.r / p2.coord.z) * z;
+		fragColor.g = (ic0*p1.color.g / p1.coord.z + ic1 * p2.color.g / p2.coord.z) * z;
+		fragColor.b = (ic0*p1.color.b / p1.coord.z + ic1 * p2.color.b / p2.coord.z) * z;
+		fragColor.a = (ic0*p1.color.a / p1.coord.z + ic1 * p2.color.a / p2.coord.z) * z;
+
+		// Texture sample
+		if (context->textureEnabled && context->curTexture != -1) {
+			Texture& tex = context->textures[context->curTexture];
+			float u = (ic0*p1.texCoord.x / p1.coord.z + ic1 * p2.texCoord.x / p2.coord.z) * z;
+			float v = (ic0*p1.texCoord.y / p1.coord.z + ic1 * p2.texCoord.y / p2.coord.z) * z;
+			u = (float)((int)glm::floor(u * tex.w) % tex.w); // This behaviour should later depend on GL_TEXTURE_WRAP_S
+			v = (float)((int)glm::floor(v * tex.h) % tex.h);
+
+			int to = (int)(u + v * tex.w);
+			fragColor.r *= tex.pixels[to].r;
+			fragColor.g *= tex.pixels[to].g;
+			fragColor.b *= tex.pixels[to].b;
+			fragColor.a *= tex.pixels[to].a;
+		}
+
+		context->bufColor[o] = fragColor;
+
+		if (x0 == x1 && y0 == y1) break;
+
+		float e2 = 2 * err;
+		if (e2 > -dy) {
+			err -= dy;
+			x0 += sx;
+		}
+		if(e2 < dx) {
+			err += dx;
+			y0 += sy;
+		}
+	}
 }
 
 void drawTriangle(Vertex p1, Vertex p2, Vertex p3) {
@@ -391,6 +450,11 @@ void glEnd() {
 	case GL_POINTS:
 		for (size_t i = 0; i < context->beginVertices.size(); i++) {
 			drawPoint(context->beginVertices[i]);
+		}
+		break;
+	case GL_LINES:
+		for (size_t i = 0; i < context->beginVertices.size(); i += 2) {
+			drawLine(context->beginVertices[i], context->beginVertices[i + 1]);
 		}
 		break;
 	case GL_TRIANGLES:
