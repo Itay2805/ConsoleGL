@@ -79,8 +79,8 @@ Specify the matrix to apply operations on
 */
 void glMatrixMode(int mode);
 void glLoadIdentity();
-void glTranslate(float x, float y, float z);
-void glScale(float x, float y, float z);
+void glTranslatef(float x, float y, float z);
+void glScalef(float x, float y, float z);
 void glRotatef(float angle, float x, float y, float z);
 void glPerspective(float fovy, float aspect, float near, float far);
 void glLookAt(float eyeX, float eyeY, float eyeZ, float centerX, float centerY, float centerZ, float upX, float upY, float upZ);

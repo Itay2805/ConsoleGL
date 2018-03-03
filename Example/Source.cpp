@@ -37,9 +37,9 @@ class MyEngineClass : public olcConsoleGameEngine {
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		glLookAt(2, 2, 2, 0, 0, 0, 0, 0, 1);
-		glRotatef(t, 0, 0, 1);
-		glTranslate(-0.5f, -0.5f, -0.2f);
-		
+		glRotatef(t * 2, 0, 0, 1);
+		glTranslatef(-0.5f, -0.5f, -0.2f);
+
 		glBegin(GL_QUADS);			
 			/*glTexCoord2f(0.0f, 1.0f);
 			glVertex3f(-0.5, 0.5, 1.0);

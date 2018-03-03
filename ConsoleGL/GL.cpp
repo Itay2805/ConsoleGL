@@ -462,13 +462,13 @@ void glLoadIdentity() {
 	*context->curMatrix = glm::mat4(1.0f);
 }
 
-void glTranslate(float x, float y, float z) {
+void glTranslatef(float x, float y, float z) {
 	GL_BEGIN_CHECK;
 	
 	*context->curMatrix = glm::translate(*context->curMatrix, glm::vec3(x, y, z));
 }
 
-void glScale(float x, float y, float z) {
+void glScalef(float x, float y, float z) {
 	GL_BEGIN_CHECK;
 
 	*context->curMatrix = glm::scale(*context->curMatrix, glm::vec3(x, y, z));
